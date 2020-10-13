@@ -5,24 +5,33 @@ class FiveNodeVisitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         pattern_num = 0
-        for i in range(len(node.body) - 1):
+        node.body.append("")
+        for i in range(len(node.body)):
             if type(node.body[i]) is ast.If and type(node.body[i].body[0]) is ast.Return and 'value' in vars(node.body[i].body[0].value):
-                if node.body[i].body[0].value.value and type(node.body[i + 1]) is ast.Return and 'value' in vars(node.body[i + 1].value):
-                    if  not node.body[i + 1].value.value:
-                        source = astor.to_source(node.body[i].test).replace("\n","")
+                if node.body[i].body[0].value.value:
+                    source = astor.to_source(node.body[i].test).replace("\n","")
 
-                        if type(node.body[i].test) is ast.Compare:
-                            pattern_num = 5
-                            source = source.rstrip(")").lstrip("(")
-                        elif type(node.body[i].test) is ast.Call:
-                            pattern_num = 6
-                        else:
-                            pattern_num = "undefined"
-
-                        print("line {0} ~ {1}: {2} returns Boolean,so you may not need if-statement.(pattern-{3})".format(node.body[i].lineno, node.body[i + 1].lineno, source, pattern_num))
+                    if type(node.body[i].test) is ast.Compare:
+                        pattern_num = 5
+                        source = source.rstrip(")").lstrip("(")
+                    elif type(node.body[i].test) is ast.Call:
+                        pattern_num = 6
+                    else:
+                        pattern_num = "undefined"
+                    linenum = -1
+                    if  type(node.body[i + 1]) is ast.Return and 'value' in vars(node.body[i + 1].value):
+                        if not node.body[i + 1].value.value:
+                            linenum = node.body[i + 1].lineno
+                    elif type(node.body[i].orelse[0]) is ast.Return and 'value' in vars(node.body[i].orelse[0].value):
+                        if not node.body[i].orelse[0].value.value:
+                            linenum = node.body[i].orelse[0].lineno
+                            
+                    if linenum != -1:
+                        print("line {0} ~ {1}: {2} returns Boolean,so you may not need if-statement.(pattern-{3})".format(node.body[i].lineno, linenum, source, pattern_num))
                         print("I suggest this code should be written")
                         print("     return " + source)
-                
+
+        del(node.body[-1])
         return node
 def AST_Reader(ast_code):
     
@@ -63,7 +72,7 @@ def AST_Reader(ast_code):
     print()
 
 def main():
-    FILENAME = r'c:\Users\maru\Documents\pyAST_ex\pydat.py'
+    FILENAME = r'c:\Users\maru\Documents\Github\marui_novice_linter\pydat.py'
 
     with open(FILENAME, 'r') as f:
         source = f.read()
