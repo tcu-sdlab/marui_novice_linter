@@ -39,3 +39,13 @@ def five_another(pattern_five_another):
         return True
     else:
         return False  # Unnecessary "else" after "return" (no-else-return)
+
+def five_dummy(pattern_five_dummy):
+    """
+    5.  Returning a boolean value by checking a condition
+        with an operator (e.g., ==, >, <) by using an if statement
+        and explicitly returning true or false rather than simply returning the condition.
+    """
+    if pattern_five_dummy == 0:
+        return True
+    return "False"  # Unnecessary "else" after "return" (no-else-return)

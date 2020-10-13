@@ -6,27 +6,30 @@ class FiveNodeVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         pattern_num = 0
         node.body.append("")
-        for i in range(len(node.body)):
+        for i in range(len(node.body) - 1):
             if type(node.body[i]) is ast.If and type(node.body[i].body[0]) is ast.Return and 'value' in vars(node.body[i].body[0].value):
-                if node.body[i].body[0].value.value:
-                    source = astor.to_source(node.body[i].test).replace("\n","")
-
-                    if type(node.body[i].test) is ast.Compare:
-                        pattern_num = 5
-                        source = source.rstrip(")").lstrip("(")
-                    elif type(node.body[i].test) is ast.Call:
-                        pattern_num = 6
-                    else:
-                        pattern_num = "undefined"
+                if node.body[i].body[0].value.value:                    
                     linenum = -1
+
                     if  type(node.body[i + 1]) is ast.Return and 'value' in vars(node.body[i + 1].value):
                         if not node.body[i + 1].value.value:
                             linenum = node.body[i + 1].lineno
-                    elif type(node.body[i].orelse[0]) is ast.Return and 'value' in vars(node.body[i].orelse[0].value):
-                        if not node.body[i].orelse[0].value.value:
-                            linenum = node.body[i].orelse[0].lineno
+                    elif node.body[i].orelse:
+                        if type(node.body[i].orelse[0]) is ast.Return and 'value' in vars(node.body[i].orelse[0].value):
+                            if not node.body[i].orelse[0].value.value:
+                                linenum = node.body[i].orelse[0].lineno
                             
                     if linenum != -1:
+                        source = astor.to_source(node.body[i].test).replace("\n","")
+
+                        if type(node.body[i].test) is ast.Compare:
+                            pattern_num = 5
+                            source = source.rstrip(")").lstrip("(")
+                        elif type(node.body[i].test) is ast.Call:
+                            pattern_num = 6
+                        else:
+                            pattern_num = "undefined"
+
                         print("line {0} ~ {1}: {2} returns Boolean,so you may not need if-statement.(pattern-{3})".format(node.body[i].lineno, linenum, source, pattern_num))
                         print("I suggest this code should be written")
                         print("     return " + source)
