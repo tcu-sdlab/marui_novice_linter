@@ -4,12 +4,22 @@ import astor
 class FiveNodeVisitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
+        pattern_num = 0
         for i in range(len(node.body) - 1):
             if type(node.body[i]) is ast.If and type(node.body[i].body[0]) is ast.Return and 'value' in vars(node.body[i].body[0].value):
                 if node.body[i].body[0].value.value and type(node.body[i + 1]) is ast.Return and 'value' in vars(node.body[i + 1].value):
                     if  not node.body[i + 1].value.value:
                         source = astor.to_source(node.body[i].test).replace("\n","")
-                        print("line " + str(node.body[i].lineno) + " ~ " + str(node.body[i + 1].lineno) + ": " + source+ " returns Boolean,so you may not need if-statement.")
+
+                        if type(node.body[i].test) is ast.Compare:
+                            pattern_num = 5
+                            source = source.rstrip(")").lstrip("(")
+                        elif type(node.body[i].test) is ast.Call:
+                            pattern_num = 6
+                        else:
+                            pattern_num = "undefined"
+
+                        print("line {0} ~ {1}: {2} returns Boolean,so you may not need if-statement.(pattern-{3})".format(node.body[i].lineno, node.body[i + 1].lineno, source, pattern_num))
                         print("I suggest this code should be written")
                         print("     return " + source)
                 
