@@ -49,3 +49,20 @@ def five_dummy(pattern_five_dummy):
     if pattern_five_dummy == 0:
         return True
     return "False"  # Unnecessary "else" after "return" (no-else-return)
+
+def two(val):
+    """
+    2. Conjoining conditions using nested if statements rather than the "and" operator.
+    """
+    if val < 10:
+        if val > 0:
+            return 0
+    return 1
+def two_dummy(val = []):
+    """
+    2. Conjoining conditions using nested if statements rather than the "and" operator.
+    """
+    if val:
+        if val[0] > 0:
+            return 0
+    return 1

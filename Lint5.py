@@ -36,6 +36,36 @@ class FiveNodeVisitor(ast.NodeVisitor):
 
         del(node.body[-1])
         return node
+class TwoNodeVisitor(ast.NodeVisitor):
+    def visit_If(self, node):
+        conditions = self.search_childIf(node)
+        print("本体の{}".format(conditions))
+        if conditions:
+            if len(conditions) > 1:
+                print("line {0} ~ {1} :These conjoining conditions{2} using nested if statements can be simplified by using and operator.(pattern-2)".format(node.lineno, node.body[0].lineno, conditions))
+                print("I suggest this code should be written")
+                print("     if ", end = "")
+                i = 0
+                for i in range(len(conditions) - 1):
+                    print(conditions[i],end = "")
+                    print(" and ",end = "")
+                print(conditions[i],end = "")
+                print(":")
+            conditions.clear()
+        return node
+    def search_childIf(self, node, conditions_sub = []):
+        condition = astor.to_source(node.test).replace("\n","")
+        print("condition = {0}".format(condition))
+        if type(node.test) is ast.Compare:
+            condition = condition.rstrip(")").lstrip("(")
+        conditions_sub.append(condition)
+        
+        print(type(node.body[0]) is ast.If and not node.body[0].orelse)
+        if type(node.body[0]) is ast.If and not node.body[0].orelse:
+            self.search_childIf(node.body[0], conditions_sub)
+        else:
+            print("final-conditions = {0}".format(conditions_sub))
+            return conditions_sub
 def AST_Reader(ast_code):
     
     count = 0
@@ -84,6 +114,8 @@ def main():
     AST_Reader(tree)
 
     FiveNodeVisitor().visit(tree)
+    print()
+    TwoNodeVisitor().visit(tree)
 
 if __name__ == '__main__':
     main()
