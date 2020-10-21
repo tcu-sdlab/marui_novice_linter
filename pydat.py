@@ -30,9 +30,6 @@ def five_another(pattern_five_another):
 def five_dummy(pattern_five_dummy):
     if pattern_five_dummy == 0:
         return True
-<<<<<<< Updated upstream
-    return "False"  # Unnecessary "else" after "return" (no-else-return)
-=======
     return "False" 
 
 def five_dummy2(pattern_five_dummy2):
@@ -82,4 +79,3 @@ def two_dummy1(val):
             return 2
     return 1
 print(type(True) is bool)
->>>>>>> Stashed changes

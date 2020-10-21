@@ -36,8 +36,6 @@ class FiveSixNodeVisitor(ast.NodeVisitor):
 
         del(node.body[-1])
         return node
-<<<<<<< Updated upstream
-=======
 class TwoNodeVisitor(ast.NodeVisitor):
     except_list = []
     elif_check = 0
@@ -82,7 +80,6 @@ class TwoNodeVisitor(ast.NodeVisitor):
             return self.search_childIf(node.body[0], conditions_sub)
         else:
             return conditions_sub, node.lineno
->>>>>>> Stashed changes
 def AST_Reader(ast_code):
     
     count = 0
@@ -130,13 +127,9 @@ def main():
     tree = ast.parse(source, FILENAME)
     AST_Reader(tree)
 
-<<<<<<< Updated upstream
-    FiveNodeVisitor().visit(tree)
-=======
     #FiveSixNodeVisitor().visit(tree)
     print()
     TwoNodeVisitor().visit(tree)
->>>>>>> Stashed changes
 
 if __name__ == '__main__':
     main()
