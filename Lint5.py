@@ -2,20 +2,31 @@ import ast
 import astor
 
 class FiveSixNodeVisitor(ast.NodeVisitor):
+    """
+    パターン5,6
+    """
 
     def visit_FunctionDef(self, node):
+        """
+        自作関数に対するビジター
+        """
         pattern_num = 0
         node.body.append("")
         for i in range(len(node.body) - 1):
-            if type(node.body[i]) is ast.If and type(node.body[i].body[0]) is ast.Return and 'value' in vars(node.body[i].body[0].value):
-                if type(node.body[i].body[0].value.value) is bool and node.body[i].body[0].value.value:                    
+            if type(node.body[i]) is ast.If and type(node.body[i].body[0]) is ast.Return \
+            and 'value' in vars(node.body[i].body[0].value):
+                if type(node.body[i].body[0].value.value) is bool \
+                and node.body[i].body[0].value.value:
                     linenum = -1
 
-                    if  type(node.body[i + 1]) is ast.Return and 'value' in vars(node.body[i + 1].value):
-                        if type(node.body[i + 1].value.value) is bool and not node.body[i + 1].value.value:
+                    if  type(node.body[i + 1]) is ast.Return \
+                    and 'value' in vars(node.body[i + 1].value):
+                        if type(node.body[i + 1].value.value) is bool \
+                        and not node.body[i + 1].value.value:
                             linenum = node.body[i + 1].lineno
                     elif node.body[i].orelse:
-                        if type(node.body[i].orelse[0]) is ast.Return and 'value' in vars(node.body[i].orelse[0].value):
+                        if type(node.body[i].orelse[0]) is ast.Return \
+                        and 'value' in vars(node.body[i].orelse[0].value):
                             if type(node.body[i].orelse[0].value.value) is bool and not node.body[i].orelse[0].value.value:
                                 linenum = node.body[i].orelse[0].lineno
                             
@@ -46,9 +57,9 @@ class TwoNodeVisitor(ast.NodeVisitor):
             conditions, lineno = self.search_childIf(node)
             if conditions:
                 if len(conditions) > 1:
-                    print("line {0} ~ {1} :These conjoining conditions{2} using nested if statements can be simplified by using and operator.(pattern-2)".format(node.lineno, lineno, conditions))
+                    print("line {0} ~ {1} :These conjoining conditions{2} using nested if statements can be simplified by using and operator.(pattern-2)"\
+                        .format(node.lineno, lineno, conditions))
                     print("I suggest this code should be written")
-                    # print("elif_check={}".format(self.elif_check))
                     if self.elif_check == 1:
                         print("     elif ", end = "")
                     else:
@@ -59,13 +70,11 @@ class TwoNodeVisitor(ast.NodeVisitor):
                         print(" and ",end = "")
                     print(conditions[i + 1],end = "")
                     print(":")
+                self.elif_check = 0
                 conditions.clear()
         if node.orelse:
-            # print("行きます")
-            print(node.orelse)
             self.elif_check = 1
             self.visit(node.orelse[0])
-            # print("完了です")
             self.elif_check = 0
         self.generic_visit(node)
         return node
@@ -119,16 +128,17 @@ def AST_Reader(ast_code):
     print()
 
 def main():
-    FILENAME = r'c:\Users\maru\Documents\Github\marui_novice_linter\pydat.py'
+    """
+    main
+    """
+    file_name = r'c:\Users\maru\Documents\Github\marui_novice_linter\pydat.py'
 
-    with open(FILENAME, 'r') as f:
-        source = f.read()
+    with open(file_name, 'r', encoding="utf-8_sig") as sourse_file:
+        source = sourse_file.read()
 
-    tree = ast.parse(source, FILENAME)
-    AST_Reader(tree)
+    tree = ast.parse(source, file_name)
 
     #FiveSixNodeVisitor().visit(tree)
-    print()
     TwoNodeVisitor().visit(tree)
 
 if __name__ == '__main__':
