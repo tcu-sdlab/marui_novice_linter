@@ -1,6 +1,6 @@
 import ast
 import astor
-
+from z3 import *
 class FiveSixNodeVisitor(ast.NodeVisitor):
     """
     パターン5,6
@@ -29,11 +29,10 @@ class FiveSixNodeVisitor(ast.NodeVisitor):
                         and 'value' in vars(node.body[i].orelse[0].value):
                             if type(node.body[i].orelse[0].value.value) is bool and not node.body[i].orelse[0].value.value:
                                 linenum = node.body[i].orelse[0].lineno
-                            
                     if linenum != -1:
                         source = astor.to_source(node.body[i].test).replace("\n","")
 
-                        if type(node.body[i].test) is ast.Compare:
+                        if type(node.body[i].test) is ast.Compare or type(node.body[i].test) is ast.BoolOp:
                             pattern_num = 5
                             source = source.rstrip(")").lstrip("(")
                         elif type(node.body[i].test) is ast.Call:
@@ -51,9 +50,9 @@ class TwoNodeVisitor(ast.NodeVisitor):
     except_list = []
     elif_check = 0
     def visit_If(self, node):
-        
+
         if node not in self.except_list:
-            
+
             conditions, lineno = self.search_childIf(node)
             if conditions:
                 if len(conditions) > 1:
@@ -61,15 +60,26 @@ class TwoNodeVisitor(ast.NodeVisitor):
                         .format(node.lineno, lineno, conditions))
                     print("I suggest this code should be written")
                     if self.elif_check == 1:
-                        print("     elif ", end = "")
+                        sentence = "     elif "
+                        # print("     elif ", end = "")
                     else:
-                        print("     if ", end = "")
+                        sentence = "     if "
+                        # print("     if ", end = "")
                     i = 0
+                    count = 1
                     for i in range(len(conditions) - 1):
-                        print(conditions[i],end = "")
-                        print(" and ",end = "")
-                    print(conditions[i + 1],end = "")
-                    print(":")
+
+                        sentence = sentence + conditions[i]
+                        if len(sentence) > 80 * count:
+                            sentence = sentence + " \\\n     and "
+                            count = count + 1
+                        else:
+                            sentence = sentence + " and "
+                        # print(conditions[i],end = "")
+                        # print(" and ",end = "")
+                    sentence = sentence + conditions[i + 1] + ":"
+                    # print(conditions[i + 1],end = "")
+                    print (sentence)
                 self.elif_check = 0
                 conditions.clear()
         if node.orelse:
@@ -83,14 +93,20 @@ class TwoNodeVisitor(ast.NodeVisitor):
         if type(node.test) is ast.Compare:
             condition = condition.rstrip(")").lstrip("(")
         conditions_sub.append(condition)
-        
+
         if type(node.body[0]) is ast.If and not node.body[0].orelse and len(node.body) == 1:
             self.except_list.append(node)
             return self.search_childIf(node.body[0], conditions_sub)
         else:
             return conditions_sub, node.lineno
+class OneNodeVisitor(ast.NodeVisitor):
+    convert_list = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq}
+    def visit_If(self, node):
+        """
+        docstring
+        """
 def AST_Reader(ast_code):
-    
+
     count = 0
     strdata = str(ast.dump(ast_code))
     clist = list(strdata)
@@ -101,8 +117,8 @@ def AST_Reader(ast_code):
             if i == ')' or i == ']':
                 print(i,end='')
             else:
-                count = count + 1 
-                print() 
+                count = count + 1
+                print()
                 for _ in range(count):
                     print("   ",end='')
                 print(i,end='')
@@ -121,12 +137,62 @@ def AST_Reader(ast_code):
                 print("  ",end='')
                 for _ in range(count - 1):
                     print("   ",end='')
-                
+
             else:
-                
+
                 print(i,end='')
     print()
+# def search_if(node):
+class OneNodeSearcher():
+    mode = 0
+    def one_search(self, node, count = 0, previous = {}, conditions = []):
+        if type(node) is ast.If:
+            if count - 1 in previous:
+                if previous[count - 1] not in conditions:
+                    conditions.append(previous[count - 1])
+                conditions.append(node.test)
+                self.mode = 1
+            else:
+                if self.mode:
+                    print(conditions)
+                    self.mode = 0
+                conditions = []
+            previous[count] = node.test
+            print(vars(node))
+            print("count = {}".format(count))
+        else:
+            if self.mode:
+                print(conditions)
+                g  = Goal()
+                for i in conditions:
+                    self.test_val_search(i)
+                print("val ={}".format(self.valiables))
+                self.mode = 0
+            conditions = []
+        cnt = 0
+        for child in ast.iter_child_nodes(node):
+            cnt = cnt + 1
+            self.one_search(child, cnt, previous, conditions)
 
+    valiables = ""
+    def test_val_search(self, node):
+        if type(node) is ast.BoolOp:
+            for i in node.values:
+                self.test_val_search(i)
+        elif type(node) is ast.Compare:
+            self.test_val_search(node.left)
+            for j in node.comparators:
+                self.test_val_search(j)
+        elif type(node) is ast.BinOp:
+            self.test_val_search(node.left)
+            self.test_val_search(node.right)
+        elif type(node) is ast.Name :
+            if node.id not in self.valiables:
+                self.valiables = self.valiables + " " + node.id
+        elif type(node) is ast.Constant:
+            print("Constant class")
+        else:
+            print("unknown class")
 def main():
     """
     main
@@ -138,8 +204,9 @@ def main():
 
     tree = ast.parse(source, file_name)
 
-    #FiveSixNodeVisitor().visit(tree)
-    TwoNodeVisitor().visit(tree)
-
+    AST_Reader(tree)
+    # FiveSixNodeVisitor().visit(tree)
+    # TwoNodeVisitor().visit(tree)
+    OneNodeSearcher().one_search(tree)
 if __name__ == '__main__':
     main()
