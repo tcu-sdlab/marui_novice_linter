@@ -1,6 +1,6 @@
-"""
-This is test code for my linter
-"""
+# """
+# This is test code for my linter
+# """
 
 # def ex(a):
 #     print(a)
@@ -123,13 +123,13 @@ This is test code for my linter
 #                                 return 2
 #     return 1
 
-def one(val):
+def one(val,val2):
     """
     1. For exclusive cases, writing a series of if statements rather than using else if.
     """
-    if val == 2:
+    if val > 10:
         print("2")
-    if val % 2 == 0 and val != 2:
+    if val > 8 and val <= 10:
         print("1")
     return 0
 # def elif_ex(val):

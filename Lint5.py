@@ -163,18 +163,71 @@ class OneNodeSearcher():
         else:
             if self.mode:
                 print(conditions)
-                g  = Goal()
+
                 for i in conditions:
                     self.test_val_search(i)
                 print("val ={}".format(self.valiables))
-                self.mode = 0
+                previous = []
+                for i in conditions:
+                    self.gen_code(i, self.valiables)
+                    f = open('test.txt','r')
+                    string = f.read()
+                    print(string)
+                    if string.startswith("And"):
+                        string = string.lstrip("And(").rstrip(")")
+                    zero_flag = True
+                    for k in string.split(", "):
+                        if not zero_flag:
+                            if k.startswith("Not"):
+                                k = k.lstrip("Not(").rstrip(")")
+                            else:
+                                k = "Not({})".format(k)
+                        else:
+                            zero_flag = 0
+                        if k in previous:
+                            print("succeed")
+                            print("line {0} :These if statements can be simlified by elif statements.(pattern-1)"\
+                            .format(node.lineno))
+                            print("I suggest this code should be written")
+                            print("elif " + k)
+                        else:
+                            previous.append(k)
+                    print("previous = {}".format(previous))
+                    f.close()
+                    self.mode = 0
             conditions = []
         cnt = 0
         for child in ast.iter_child_nodes(node):
             cnt = cnt + 1
             self.one_search(child, cnt, previous, conditions)
-
-    valiables = ""
+    valiables = []
+    def gen_code(self, i, valiables):
+        if type(i) is not ast.Call:
+            constant1 = """
+from z3 import *
+f = open('test.txt','w')
+g  = Goal()
+t = Then(Tactic("solve-eqs"),Tactic("simplify"))
+val_list = {}
+"""
+            constant2 ="valiables = {val}\n".format(val = valiables)
+            for j in range(len(valiables)):
+                constant2 = constant2 + "{} = Int(valiables[j])\n".format(valiables[j])
+            constant2 = constant2 + """
+for i in range(len(valiables)):
+    val_list[i] = Int(valiables[i])
+    """
+            constant3 = """
+f.write(str(s))
+f.close()
+                    """
+            if type(i) is ast.BoolOp:
+                if type(i.op) is ast.And:
+                    i = ast.Call(func = ast.Name(id = 'And', ctx = ast.Store()), args = i.values, keywords = [])
+            source = astor.to_source(ast.Assign(targets = [ast.Name(id = 's',ctx = ast.Store())],value = ast.Call(func = ast.Name(id = 't', ctx = ast.Load()), args = [i], keywords = [])))
+            tmp = constant1 + constant2 + source.rstrip() + ".as_expr()" + constant3
+            print(tmp)
+            exec(compile(tmp,"","exec"))
     def test_val_search(self, node):
         if type(node) is ast.BoolOp:
             for i in node.values:
@@ -188,7 +241,8 @@ class OneNodeSearcher():
             self.test_val_search(node.right)
         elif type(node) is ast.Name :
             if node.id not in self.valiables:
-                self.valiables = self.valiables + " " + node.id
+                self.valiables.append(node.id)
+
         elif type(node) is ast.Constant:
             print("Constant class")
         else:
@@ -197,8 +251,8 @@ def main():
     """
     main
     """
+    # file_name = r'c:\Users\maru\Documents\Github\marui_novice_linter\tryz3.py'
     file_name = r'c:\Users\maru\Documents\Github\marui_novice_linter\pydat.py'
-
     with open(file_name, 'r', encoding="utf-8_sig") as sourse_file:
         source = sourse_file.read()
 
