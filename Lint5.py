@@ -176,6 +176,7 @@ class OneNodeSearcher():
                     if string.startswith("And"):
                         string = string.lstrip("And(").rstrip(")")
                     zero_flag = True
+                    result_flag = False
                     for k in string.split(", "):
                         if not zero_flag:
                             if k.startswith("Not"):
@@ -186,12 +187,16 @@ class OneNodeSearcher():
                             zero_flag = 0
                         if k in previous:
                             print("succeed")
-                            print("line {0} :These if statements can be simlified by elif statements.(pattern-1)"\
-                            .format(node.lineno))
-                            print("I suggest this code should be written")
-                            print("elif " + k)
+                            result_flag = True
                         else:
                             previous.append(k)
+                    print("line {0} :These if statements can be simlified by elif statements.(pattern-1)"\
+                    .format(node.lineno))
+                    print("I suggest this code should be written")
+                    print("elif ",end = "")
+                    for j in previous:
+                        print(j,end = " ")
+                    print()
                     print("previous = {}".format(previous))
                     f.close()
                     self.mode = 0
