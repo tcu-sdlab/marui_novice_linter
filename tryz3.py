@@ -8,7 +8,7 @@ s=t(x > 10)
 print(s)
 
 g  = Goal()
-g.add(And(x > 8, x < 10))
+g.add(And(x % 2 == 0, x != 2))
 
 t1 = Tactic('simplify')
 t2 = Tactic('solve-eqs')

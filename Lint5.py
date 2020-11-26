@@ -190,7 +190,7 @@ class OneNodeSearcher():
                             result_flag = True
                         else:
                             previous.append(k)
-                    print("line {0} :These if statements can be simlified by elif statements.(pattern-1)"\
+                    print("line {0} :These if statements can be simplified by elif statements.(pattern-1)"\
                     .format(node.lineno))
                     print("I suggest this code should be written")
                     print("elif ",end = "")
@@ -217,7 +217,7 @@ val_list = {}
 """
             constant2 ="valiables = {val}\n".format(val = valiables)
             for j in range(len(valiables)):
-                constant2 = constant2 + "{} = Int(valiables[j])\n".format(valiables[j])
+                constant2 = constant2 + "{0} = Int(valiables[{1}])\n".format(valiables[j],j)
             constant2 = constant2 + """
 for i in range(len(valiables)):
     val_list[i] = Int(valiables[i])
