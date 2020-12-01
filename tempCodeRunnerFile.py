@@ -1,2 +1,2 @@
-
-                    print("I suggest this code should be writte
+    for k in i.values:
+                    self.expr_investigate(k, g, t, z3var)

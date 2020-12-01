@@ -265,7 +265,7 @@ def main():
 
     AST_Reader(tree)
     # FiveSixNodeVisitor().visit(tree)
-    # TwoNodeVisitor().visit(tree)
-    OneNodeSearcher().one_search(tree)
+    # # TwoNodeVisitor().visit(tree)
+    # OneNodeSearcher().one_search(tree)
 if __name__ == '__main__':
     main()
