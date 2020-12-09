@@ -127,10 +127,12 @@ def one(val,val2):
     """
     1. For exclusive cases, writing a series of if statements rather than using else if.
     """
-    if val > 10:
+    if val == 11:
         print("2")
-    if val > 8 and val <= 10:
+    if val < 13 and val >= 10 and val != 11:
         print("1")
+    if val != 11 and val  < 15 and val >= 10 and val >= 13:
+        print(3)
     return 0
 # def elif_ex(val):
 #     if val == 1:
