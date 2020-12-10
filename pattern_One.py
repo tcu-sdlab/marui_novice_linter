@@ -50,38 +50,54 @@ class OneNodeSearcher():
             # 条件式ごとに処理をする
             for i in conditions:
                 # 条件式に含まれる変数をz3用にフォーマット
-                # print("final = {}".format(self.search_variable_name(i)))
                 var_list = self.search_variable_name(i)
                 for j in var_list:
                     z3var[j] = Int(j)
 
                 # z3を用いて条件文の具体的な表現を解析し，リストに格納する
-                z3_list.append(self.expr_investigate(i,z3var))
+                
+                result = self.expr_investigate(i,z3var)
+                if type(result) is list:
+                    result = list(set(result))
+                z3_list.append(result)
                 z3var = {}
-
             # 解析結果から冗長なコードの条件に当てはまるか調べる
             self.conditions_analyze(z3_list, lineno)
 
             self.is_continuous = False
 
-    def conditions_analyze(self, condition_list, lineno, result=[]):
+    def conditions_analyze(self, condition_list, lineno):
         """
         docstring
         """
         if len(condition_list) != 1:
             t = Then(Tactic("solve-eqs"),Tactic('simplify'))
-            tmp = condition_list.pop(0)
-            g = t(Not(self.conditions_integrate(tmp))).as_expr()
-            for i in condition_list:
-                if type(i) is list:
-                    result = self.list_analyze(i, g)
-                    if result != None:
-                        print("line:{0} ~ line:{1}, condition \"{2}\" may be simplified by elif-statement".format(lineno[0], lineno[-1], result))
-                        # tmp_list = i
-                        # print("For example: elif {} ".format(tmp_list.pop(0)),end = "")
-                        # for j in tmp_list:
-                        #     print("and {}".format(j), end = "")
-                        # print()
+            while len(condition_list) != 1:
+                tmp = condition_list.pop(0)
+                if type(tmp) is list:
+                    for i in range(len(tmp)):
+                        tmp[i] = t(Not(tmp[i])).as_expr()
+                    g = tmp
+                else:
+                    g = t(Not(self.conditions_integrate(tmp))).as_expr()
+                result = []
+                for i in condition_list:
+                    if type(g)is list:
+                        for k in g:
+                            if type(i) is list:
+                                tmp = self.list_analyze(i, k)
+                                if tmp != None:
+                                    if not tmp in result:
+                                        result.append(tmp)
+                                        print("line:{0} ~ line:{1}, condition \"{2}\" may be simplified by elif-statement".format(lineno[0], lineno[-1], result))
+                    else:
+                        if type(i) is list:
+                            tmp = self.list_analyze(i, g)
+                            if tmp != None:
+                                if not tmp in result:
+                                    result.append(tmp)
+                                    print("line:{0} ~ line:{1}, condition \"{2}\" may be simplified by elif-statement".format(lineno[0], lineno[-1], result))
+
 
     def conditions_integrate(self, conditions, g = True):
         """
@@ -101,42 +117,32 @@ class OneNodeSearcher():
                 if j == g:
                     return j
 
-    def search_variable_name(self, node, variables = [], debug = False):
-
+    def search_variable_name(self, node, variables = None, debug = False):
+        if variables is None:
+            variables = []
         """
         プログラム内で使われている変数の名前を検索する関数
         """
-        print(type(node))
         if type(node) is ast.BoolOp:
             for i in node.values:
-                variables.extend(self.search_variable_name(i))
+                variables.extend(self.search_variable_name(i, variables))
             return variables
         elif type(node) is ast.Compare:
             tmp1_list = []
-            # print("extend先 = {}".format(variables))
-            # print("extend元 = {}".format(self.search_variable_name(node.left, variables, debug = True)))
             tmp1_list.extend(self.search_variable_name(node.left, variables))
-            # print("left end = {}".format(variables))
+            # ここまでOK
             for j in node.comparators:
-                tmp1_list.extend(self.search_variable_name(j))
-            # print("variables = {}".format(variables))
-            return variables
+                tmp1_list.extend(self.search_variable_name(j, variables))
+            return tmp1_list
         elif type(node) is ast.BinOp:
             return variables + self.search_variable_name(node.left) + self.search_variable_name(node.right)
         elif type(node) is ast.Name :
-            # こいつは犯人じゃない
-            # print(debug)
             tmp_list = []
-            # if debug:
-            #     print("variables = {}".format(variables))
-            #     print(node.id)
-            #     print(node.id not in variables)
             if node.id not in variables:
                 tmp_list = variables + [node.id]
             return tmp_list
         elif type(node) is ast.Constant:
-            # print("when constant = {}".format(variables))
-            return variables
+            return []
         else:
             print("unknown class")
             return variables
@@ -146,7 +152,6 @@ class OneNodeSearcher():
         """
         どのような条件かによって処理する
         """
-
         # z3用の変数定義
         g  = Goal()
         t = Then(Tactic("solve-eqs"),Tactic('simplify'))
@@ -172,10 +177,12 @@ class OneNodeSearcher():
             else:
                 return t(And(conditions[0], conditions[1])).as_expr()
 
-    def bool_analyze(self, i, z3var, bool_list = [], conditions = []):
+    def bool_analyze(self, i, z3var, bool_list = [], conditions = None):
         """
         docstring
         """
+        if conditions is None:
+            conditions = []
         if type(i.op) is ast.And:
                 # ANDのとき
                 # andであることをリストに記憶しておく

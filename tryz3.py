@@ -4,7 +4,8 @@
 from z3 import *
 x, y = Ints('z y')
 t = Then(Tactic("solve-eqs"),Tactic('simplify'))
-s=t(x > 10)
+tmp = Not(x == 1)
+s=t(x.__eq__(1)).as_expr()
 print(s)
 
 g  = Goal()

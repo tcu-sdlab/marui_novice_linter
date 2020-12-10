@@ -131,7 +131,7 @@ def one(val,val2):
         print("2")
     if val < 13 and val >= 10 and val != 11:
         print("1")
-    if val != 11 and val  < 15 and val >= 10 and val >= 13:
+    if val != 11 and val < 15 and val >= 10 and val >= 13:
         print(3)
     return 0
 # def elif_ex(val):
