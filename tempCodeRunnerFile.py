@@ -1,1 +1,1 @@
-print
+AST_Reader(tree)

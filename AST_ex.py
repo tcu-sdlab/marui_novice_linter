@@ -179,13 +179,13 @@ def main():
     print("view")
     AST_Reader(tree)
 
-    print("\n\nsearch")
-    FunctionNodeVisitor().search_func(tree)
-    print("\nvariable")
-    VariableNodeVisitor().search_val(tree)
+    # print("\n\nsearch")
+    # FunctionNodeVisitor().search_func(tree)
+    # print("\nvariable")
+    # VariableNodeVisitor().search_val(tree)
 
-    print("\nif")
-    IfNodeVisitor().visit(tree)
+    # print("\nif")
+    # IfNodeVisitor().visit(tree)
 
     # print("search_if")
     # search_if(tree,val)
