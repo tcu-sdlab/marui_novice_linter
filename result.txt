@@ -1,0 +1,22 @@
+pattern-1
+adiIspas_20777163_716.py
+    if b - a <= c:
+
+        words += 1
+
+    if b - a > c and words > 0:
+
+pattern-1
+ae.seraji_21033343_721.py
+	if newState == state and newState == True:
+		size += 1
+	if newState != state and newState == True:
+
+pattern-1
+ae.seraji_21033343_721.py
+	if newState == state and newState == True:
+		size += 1
+	if newState != state and newState == True:
+		k += 1
+		if size != 0: out.append(size)
+

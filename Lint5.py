@@ -1,7 +1,13 @@
 import ast
 import astor
 from z3 import *
+import linecache
+import csv
 
+pattern5 = 0
+pattern6 = 0
+pattern2 = 0
+pattern1 = 0
 lineno_list = []
 class FiveSixNodeVisitor(ast.NodeVisitor):
     """
@@ -16,7 +22,7 @@ class FiveSixNodeVisitor(ast.NodeVisitor):
         node.body.append("")
         for i in range(len(node.body) - 1):
             if type(node.body[i]) is ast.If and type(node.body[i].body[0]) is ast.Return \
-            and 'value' in vars(node.body[i].body[0].value):
+            and node.body[i].body[0].value is not None and 'value' in vars(node.body[i].body[0].value):
                 if type(node.body[i].body[0].value.value) is bool \
                 and node.body[i].body[0].value.value:
                     linenum = -1
@@ -36,9 +42,14 @@ class FiveSixNodeVisitor(ast.NodeVisitor):
 
                         if type(node.body[i].test) is ast.Compare or type(node.body[i].test) is ast.BoolOp:
                             pattern_num = 5
+                            global pattern5
+                            pattern5 = pattern5 + 1
                             source = source.rstrip(")").lstrip("(")
+                            
                         elif type(node.body[i].test) is ast.Call:
                             pattern_num = 6
+                            global pattern6
+                            pattern6 = pattern6 + 1
                         else:
                             pattern_num = "undefined"
                         global lineno_list
@@ -55,11 +66,16 @@ class TwoNodeVisitor(ast.NodeVisitor):
     elif_check = 0
     def visit_If(self, node):
 
-        if node not in self.except_list:
+        if node not in self.except_list and node.orelse == []:
 
             conditions, lineno = self.search_childIf(node)
             if conditions:
                 if len(conditions) > 1:
+                    global lineno_list
+                    lineno_list.append(node.lineno)
+                    lineno_list.append(lineno)
+                    global pattern2
+                    pattern2 = pattern2 + 1
                     print("line {0} ~ {1} :These conjoining conditions{2} using nested if statements can be simplified by using and operator.(pattern-2)"\
                         .format(node.lineno, lineno, conditions))
                     print("I suggest this code should be written")
@@ -139,7 +155,7 @@ def AST_Reader(ast_code):
 class OneNodeSearcher():
     is_continuous = False # 連続していることを判定する
     # node: 現在のノード,count: ifの位置関係を確認するための変数, previous: 前までに検出された条件式を格納する辞書型変数, conditions:
-    def one_search(self, node, count = 1, previous = {}, conditions = None, lineno = None):
+    def one_search(self, node, count = 1, count_two = 0, previous = {}, conditions = None, lineno = None):
         if lineno is None:
             lineno = []
         if conditions is None:
@@ -148,18 +164,19 @@ class OneNodeSearcher():
             # キー"count - 1"の要素がpreviousにあるとき，つまりこのifの直前にifがある場合
             if count - 1 in previous:
                 # previous[count - 1]がconditionsの中にないとき（条件の重複を防ぐため）
-                if previous[count - 1] not in conditions:
+                if previous[count - 1] not in conditions and previous[str(count - 1)] == count_two:
 
                     # そのprevious[count - 1]を末尾に追加
                     conditions.append(previous.pop(count - 1))
-                    lineno.append(previous.pop(1 - count))
-
+                    rainn = previous.pop(1 - count)
+                    lineno.append(rainn)
                 # conditionsの末尾に現在のcountの条件文を追加
-                conditions.append(node.test)
-                lineno.append(node.lineno)
+                if not node.orelse:
+                    conditions.append(node.test)
+                    lineno.append(node.lineno)
 
-                # 連続していることを判定する
-                self.is_continuous = True
+                    # 連続していることを判定する
+                    self.is_continuous = True
             else:
                 self.process_when_exiting_if(conditions, lineno)
                 conditions = []
@@ -168,6 +185,7 @@ class OneNodeSearcher():
             # previousにキーをcountとした条件文のリストを登録することによって一時的に記憶
             previous[count] = node.test
             previous[-count] = node.lineno
+            previous[str(count)] = count_two
         else:
             self.process_when_exiting_if(conditions, lineno)
             conditions = []
@@ -176,7 +194,8 @@ class OneNodeSearcher():
         for child in ast.iter_child_nodes(node):
             # 子ノードに対して再帰する
             cnt = cnt + 1
-            self.one_search(child, cnt, previous, conditions, lineno)
+            count_two = count_two + 1
+            self.one_search(child, cnt, count_two, previous, conditions, lineno)
 
     def process_when_exiting_if(self, conditions, lineno):
         # ifのカウントから抜けたとき
@@ -223,6 +242,8 @@ class OneNodeSearcher():
                 else:
                     g = t(Not(self.conditions_integrate(tmp))).as_expr()
                 result = []
+                global lineno_list
+                global pattern1
                 for i in condition_list:
                     if type(g) is list:
                         for k in g:
@@ -231,6 +252,9 @@ class OneNodeSearcher():
                                 if tmp != None:
                                     if not tmp in result:
                                         result.append(tmp)
+                                        pattern1 = pattern1 + 1
+                                        lineno_list.append(lineno[0])
+                                        lineno_list.append(lineno[-1])
                                         print("line:{0} ~ line:{1}, condition \"{2}\" may be simplified by elif-statement".format(lineno[0], lineno[-1], result))
                     else:
                         if type(i) is list:
@@ -238,6 +262,9 @@ class OneNodeSearcher():
                             if tmp != None:
                                 if not tmp in result:
                                     result.append(tmp)
+                                    pattern1 = pattern1 + 1
+                                    lineno_list.append(lineno[0])
+                                    lineno_list.append(lineno[-1])
                                     print("line:{0} ~ line:{1}, condition \"{2}\" may be simplified by elif-statement".format(lineno[0], lineno[-1], result))
 
 
@@ -287,7 +314,11 @@ class OneNodeSearcher():
             return self.search_variable_name(node.operand, variables)
         elif type(node) is ast.Constant or type(node) is ast.Call:
             return []
+        elif type(node) is ast.Subscript or type(node) is ast.List or type(node) is ast.Subscript or type(node) is ast.Tuple or type(node) is ast.Attribute or type(node) is ast.Set:
+            return variables
         else:
+            print(astor.to_source(node))
+            print(node)
             print("unknown class = {}".format(vars(node)))
             return variables
     def expr_investigate(self, i, z3var):
@@ -300,15 +331,33 @@ class OneNodeSearcher():
         # 演算子を用いている場合
         if type(i) is ast.Compare:
             op = type(i.ops[0])
-            if op is ast.Gt:
-                g.add(z3var[i.left.id].__gt__(i.comparators[0].value))
-            elif op is ast.LtE:
-                g.add(Not(z3var[i.left.id].__gt__(i.comparators[0].value)))
-            elif op is ast.Eq:
-                g.add(z3var[i.left.id].__eq__(i.comparators[0].value))
-            elif op is ast.Lt:
-                g.add(z3var[i.left.id].__lt__(i.comparators[0].value))
-            return g[0], False
+            left = self.bin_analyze(z3var, i.left)
+            right = self.bin_analyze(z3var, i.comparators[0])
+            if type(left) is ast.Subscript or type(left) is ast.Call or type(right) is ast.Subscript or type(right) is ast.Call  \
+            or type(right) is str or type(left) is str or type(right) is ast.List or type(left) is ast.List or type(left) is ast.Attribute or type(right) is ast.Attribute:
+                return False, False
+            else:
+                if op is ast.Gt:
+                    if type(left) is not z3.z3.ArithRef:
+                        g.add(right.__lt__(left))
+                    else:
+                        g.add(left.__gt__(right))
+                    g.add(left.__gt__(right))
+                elif op is ast.LtE:
+                    if type(left) is not z3.z3.ArithRef:
+                        g.add(Not(right.__lt__(left)))
+                    else:
+                        g.add(Not(left.__gt__(right)))
+                elif op is ast.Eq:
+                    if type(left) is not z3.z3.ArithRef:
+                        g.add(right.__eq__(left))
+                    else:
+                        g.add(left.__eq__(right))
+                elif op is ast.Lt:
+                    g.add(left.__lt__(right))
+                if not g:
+                    return [], False
+                return g[0], False
 
         elif type(i) is ast.BoolOp:
             conditions, bool_list, eq_flag = self.bool_analyze(i, z3var)
@@ -317,10 +366,15 @@ class OneNodeSearcher():
             else:
                 t = Then(Tactic("solve-eqs"),Tactic('simplify'))
             if len(conditions) > 1:
+                if type(conditions[0]) is z3.z3.ArithRef or type(conditions[1]) is z3.z3.ArithRef or type(conditions[0]) is ast.Subscript or type(conditions[1]) is ast.Subscript:
+                    return False, False
                 if str(And(conditions[0], conditions[1])).startswith("And"):
                     result = []
                     for k in conditions:
-                        result.append(t(k).as_expr())
+                        if k == False:
+                            result.append(k)
+                        else:
+                            result.append(t(k).as_expr())
                     return result, eq_flag
                 else:
                     return t(And(conditions[0], conditions[1])).as_expr(), eq_flag
@@ -328,7 +382,57 @@ class OneNodeSearcher():
         else:
             return False, False
 
-
+    def bin_analyze(self, z3var, node):
+        if type(node) is ast.BinOp:
+            if type(node.left) is ast.BinOp or type(node.left) is ast.Compare or type(node.left) is ast.UnaryOp:
+                left_value = self.bin_analyze(z3var, node.left)
+            elif type(node.left) is ast.Name:
+                left_value = z3var[node.left.id]
+            elif type(node.left) is ast.Constant:
+                left_value = node.left.value
+            else:
+                return node.left
+            if type(node.right) is ast.BinOp:
+                right_value = self.bin_analyze(z3var, node.right)
+            elif type(node.right) is ast.Name:
+                right_value = z3var[node.right.id]
+            elif type(node.right) is ast.Constant:
+                right_value = node.right.value
+            elif type(node.right) is ast.Compare:
+                right_value = self.bin_analyze(z3var, node.right)
+            else:
+                return node.right
+            if type(left_value) is ast.Call or type(right_value) is ast.Call or type(left_value) is ast.Subscript or type(right_value) is ast.Subscript:
+                return False
+            else:
+                if type(node.op) is ast.Sub:
+                    return left_value - right_value
+                elif type(node.op) is ast.Mod:
+                    return left_value % right_value
+                elif type(node.op) is ast.Mult:
+                    return left_value * right_value
+                elif type(node.op) is ast.Add:
+                    return left_value + right_value
+                elif type(node.op) is ast.LShift or type(node.op) is ast.BitAnd or type(node.op) is ast.FloorDiv:
+                    return False
+                elif type(node.op) is ast.Pow:
+                    return left_value * left_value
+                elif type(node.op) is ast.Div:
+                    return left_value / right_value
+                else:
+                    print(node.op)
+        elif type(node) is ast.Name:
+            return z3var[node.id]
+        elif type(node) is ast.Constant:
+            return node.value
+        elif type(node) is ast.UnaryOp:
+            if type(node.op) is ast.USub:
+                operand = self.bin_analyze(z3var, node.operand)
+                if type(operand) is ast.Call:
+                    return False
+                return -operand
+        else:
+            return node
     def bool_analyze(self, i, z3var, bool_list = [], conditions = None, eq_flag = False):
         """
         docstring
@@ -336,90 +440,195 @@ class OneNodeSearcher():
         if conditions is None:
             conditions = []
         boolean = type(i.op)
-
         if boolean is ast.And:
             # ANDのとき
             # andであることをリストに記憶しておく
             bool_list.append(i.op)
             for k in i.values:
+    
                 if type(k) is ast.Compare:
                     # 演算子を用いている場合
                     op = type(k.ops[0])
-                    if op is ast.Gt:
-                        conditions.append(z3var[k.left.id].__gt__(k.comparators[0].value))
-                    elif op is ast.Lt:
-                        conditions.append(z3var[k.left.id].__lt__(k.comparators[0].value))
-                    elif op is ast.LtE:
-                        conditions.append(Not(z3var[k.left.id].__gt__(k.comparators[0].value)))
-                    elif op is ast.GtE:
-                        conditions.append(Not(z3var[k.left.id].__lt__(k.comparators[0].value)))
-                    elif op is ast.NotEq:
-                        conditions.append(Not(z3var[k.left.id].__eq__(k.comparators[0].value)))
+                    left = self.bin_analyze(z3var, k.left)
+                    right = self.bin_analyze(z3var, k.comparators[0])
+                    if type(left) is ast.Subscript or type(left) is ast.Call or type(right) is ast.Subscript or type(right) is ast.Call  or type(right) is str or left == False or right == False:
+                        conditions.append(False)
+                    else:
+                        if type(left) is not z3.z3.ArithRef:
+                            tmp = left
+                            left = right
+                            right = tmp
+                        if op is ast.Gt:
+                            conditions.append((left).__gt__(right))
+                        elif op is ast.Lt:
+                            conditions.append((left).__lt__(right))
+                        elif op is ast.LtE:
+                            if type(left) is int:
+                                final = right.__lt__(left)
+                            else:
+                                final = (left).__gt__(right)
+                            conditions.append(Not(final))
+                        elif op is ast.GtE:
+                            conditions.append(Not((left).__lt__(right)))
+                        elif op is ast.Eq:
+                            eq_flag = True
+                            conditions.append((left).__eq__(right))
+                        elif op is ast.NotEq:
+                            conditions.append(Not((left).__eq__(right)))
                 elif type(k) is ast.BoolOp:
                     conditions, bool_list, eq_flag = self.bool_analyze(k, z3var, bool_list, conditions)
                 elif type(k) is ast.UnaryOp:
-                    conditions, bool_list, eq_flag = self.bool_analyze(k.operand, z3var, bool_list, conditions)
-                    if eq_flag:
-                        t = Tactic("simplify")
+                    # conditions, bool_list, eq_flag = self.bool_analyze(k, z3var, bool_list, conditions)
+                    eq_flag = self.eq_exists(k)
+                    conditions.append(self.bin_analyze(z3var, k.operand))
+                    if type(conditions[0]) is z3.z3.ArithRef or type(conditions[0]) is ast.Subscript:
+                        conditions.append(False)
                     else:
-                        t = Then(Tactic("solve-eqs"),Tactic('simplify'))
-                    conditions.append(t(Not(conditions[0])).as_expr())
+                        if eq_flag:
+                            t = Tactic("simplify")
+                        else:
+                            t = Then(Tactic("solve-eqs"),Tactic('simplify'))
+                        conditions.append(t(Not(conditions[0])).as_expr())
         elif boolean is ast.Or:
             bool_list.append(i.op)
             for k in i.values:
                 if type(k) is ast.Compare:
                     # 演算子を用いている場合
                     op = type(k.ops[0])
-                    if op is ast.Gt:
-                        conditions.append(z3var[k.left.id].__gt__(k.comparators[0].value))
-                    elif op is ast.Lt:
-                        conditions.append(z3var[k.left.id].__lt__(k.comparators[0].value))
-                    elif op is ast.LtE:
-                        conditions.append(Not(z3var[k.left.id].__gt__(k.comparators[0].value)))
-                    elif op is ast.GtE:
-                        conditions.append(Not(z3var[k.left.id].__lt__(k.comparators[0].value)))
-                    elif op is ast.Eq:
-                        eq_flag = True
-                        conditions.append(z3var[k.left.id].__eq__(k.comparators[0].value))
-                    elif op is ast.NotEq:
-                        conditions.append(Not(z3var[k.left.id].__eq__(k.comparators[0].value)))
+                    left = self.bin_analyze(z3var, k.left)
+                    right = self.bin_analyze(z3var, k.comparators[0])
+                    if type(left) is ast.Subscript or type(left) is ast.Call or type(right) is ast.Subscript or type(right) is ast.Call  or type(right) is str or type(left) is str or left == False:
+                        conditions.append(False)
+                    else:
+                        if op is ast.Gt:
+                            conditions.append((left).__gt__(right))
+                        elif op is ast.Lt:
+                            conditions.append((left).__lt__(right))
+                        elif op is ast.LtE:
+                            conditions.append(Not((left).__gt__(right)))
+                        elif op is ast.GtE:
+                            conditions.append(Not((left).__lt__(right)))
+                        elif op is ast.Eq:
+                            eq_flag = True
+                            conditions.append((left).__eq__(right))
+                        elif op is ast.NotEq:
+                            conditions.append(Not(left.__eq__(right)))
+                elif type(k) is ast.UnaryOp:
+                    # conditions, bool_list, eq_flag = self.bool_analyze(k, z3var, bool_list, conditions)
+                    eq_flag = self.eq_exists(k)
+                    tmp = self.bin_analyze(z3var, k.operand)
+                    if type(tmp) is z3.z3.ArithRef or type(k.operand) is ast.Call:
+                        conditions.append(False)
+                    else:
+                        conditions.append(tmp)
+                        if eq_flag:
+                            t = Tactic("simplify")
+                        else:
+                            t = Then(Tactic("solve-eqs"),Tactic('simplify'))
+                        if type(k.op) is ast.Not:
+                            conditions.append(t(Not(conditions[0])).as_expr())
                 elif type(k) is ast.BoolOp:
-                    conditions, bool_list, eq_flag = self.bool_analyze(i, z3var, bool_list, conditions, eq_flag)
+                    conditions, bool_list, eq_flag = self.bool_analyze(k, z3var, bool_list, conditions, eq_flag)
+                elif type(k) is ast.Call:
+                    conditions.append(False)
+                elif type(k) is ast.Name:
+                    conditions.append(z3var[k.id])
             if eq_flag:
                 t = Tactic("simplify")
             else:
                 t = Then(Tactic("solve-eqs"),Tactic('simplify'))
-            conditions[0] = t(Not(And(Not(conditions[0]), Not(conditions[1])))).as_expr()
+            if type(conditions[1]) is z3.z3.ArithRef or type(conditions[0]) is z3.z3.ArithRef:
+                conditions[0] = False
+            else:
+                conditions[0] = t(Not(And(Not(conditions[0]), Not(conditions[1])))).as_expr()
             conditions.pop(1)
         return conditions, bool_list, eq_flag
-
+    def eq_exists(self, node):
+        thing = type(node)
+        if thing is ast.Eq:
+            return True
+        elif thing is ast.Name or thing is ast.Not or thing is ast.Subscript or thing is ast.Call:
+            return False
+        elif thing is ast.UnaryOp:
+            return self.eq_exists(node.op) or self.eq_exists(node.operand)
+        else:
+            print("error:" + str(thing), file=sys.stderr)
+        return False
 def main():
     """
     main
     """
     # file_path = r'c:\Users\maru\Documents\Github\marui_novice_linter\tryz3.py'
     file_names_file = r'c:\Users\maru\Documents\Github\marui_novice_linter\file_names.txt'
-    file_path = r'c:\Users\maru\Documents\Github\marui_novice_linter\pydat.py'
-
-    with open(file_names_file, "r", encoding="utf-8") as file_names:
-        for file_name in file_names:
-            file_path = "./" + file_name
+    py_names = open("./file_names.csv", "r", encoding="ms932", errors="", newline="")
+    # file_path = r'c:\Users\maru\Documents\Github\marui_novice_linter\pydat copy.py'
+    f = csv.reader(py_names, delimiter=",", doublequote=True, lineterminator="\r\n", quotechar='"', skipinitialspace=True)
+    error_count = 0
+    with open("result.txt", "w") as result:
+        result.close()
+    count = 0
+    for py_file in f:
+        count = count + 1
+        # py_file = ["ae.seraji_21033343_721.py"]
+        if py_file[0] != "filename":
+            file_path = "./python_files/" + py_file[0]
             with open(file_path, 'r', encoding="utf-8_sig") as sourse_file:
                 source = sourse_file.read()
                 tree = ast.parse(source, file_path)
                 # AST_Reader(tree)
+                # try:
                 global lineno_list
-                FiveSixNodeVisitor().visit(tree)
                 with open("result.txt", "a") as result:
+                    # FiveSixNodeVisitor().visit(tree)
                     while len(lineno_list) != 0:
+                        result.write(file_path + "\n\n")
                         result.write("pattern-5\n")
                         # pop してwrite
-
-                        for i in range(node.body[i].lineno - 1):
-                            source_file.readlines()
-                        while 
-                            result.write()
-                TwoNodeVisitor().visit(tree)
-                OneNodeSearcher().one_search(tree)
+                        result.write(py_file[0])
+                        result.write("\n")
+                        print(lineno_list)
+                        a = lineno_list.pop(0)
+                        b = lineno_list.pop(0) + 1
+                        for i in range(a, b):
+                            result.write(linecache.getline(file_path, i))
+                        result.write("\n")
+                    # TwoNodeVisitor().visit(tree)
+                    while len(lineno_list) != 0:
+                        result.write(file_path + "\n\n")
+                        result.write("pattern-2\n")
+                        # pop してwrite
+                        result.write(py_file[0])
+                        result.write("\n")
+                        print(lineno_list)
+                        a = lineno_list.pop(0)
+                        b = lineno_list.pop(0) + 1
+                        for i in range(a, b):
+                            result.write(linecache.getline(file_path, i))
+                        result.write("\n")
+                    OneNodeSearcher().one_search(tree)
+                    while len(lineno_list) != 0:
+                        result.write("pattern-1\n")
+                        # pop してwrite
+                        result.write(py_file[0])
+                        result.write("\n")
+                        print(lineno_list)
+                        a = lineno_list.pop(0)
+                        b = lineno_list.pop(0) + 1
+                        for i in range(a, b):
+                            result.write(linecache.getline(file_path, i))
+                        result.write("\n")
+                # break
+            # except:
+            #     error_count = error_count + 1
+    # print(error_count)
+    global pattern2
+    global pattern5
+    global pattern6
+    global pattern1
+    print(count)
+    print(pattern5)
+    print(pattern6)
+    print(pattern2)
+    print(pattern1)
 if __name__ == '__main__':
     main()
