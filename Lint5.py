@@ -431,6 +431,9 @@ class OneNodeSearcher():
                 if type(operand) is ast.Call:
                     return False
                 return -operand
+        elif type(node) is ast.BoolOp:
+            conditions, bool_list, eq_flag = self.bool_analyze(node, z3var)
+            return conditions[0]
         else:
             return node
     def bool_analyze(self, i, z3var, bool_list = [], conditions = None, eq_flag = False):
@@ -480,6 +483,7 @@ class OneNodeSearcher():
                 elif type(k) is ast.UnaryOp:
                     # conditions, bool_list, eq_flag = self.bool_analyze(k, z3var, bool_list, conditions)
                     eq_flag = self.eq_exists(k)
+                    print(self.bin_analyze(z3var, k.operand))
                     conditions.append(self.bin_analyze(z3var, k.operand))
                     if type(conditions[0]) is z3.z3.ArithRef or type(conditions[0]) is ast.Subscript:
                         conditions.append(False)
@@ -547,7 +551,7 @@ class OneNodeSearcher():
         thing = type(node)
         if thing is ast.Eq:
             return True
-        elif thing is ast.Name or thing is ast.Not or thing is ast.Subscript or thing is ast.Call:
+        elif thing is ast.Name or thing is ast.Not or thing is ast.Subscript or thing is ast.Call or thing is ast.BoolOp:
             return False
         elif thing is ast.UnaryOp:
             return self.eq_exists(node.op) or self.eq_exists(node.operand)
@@ -567,56 +571,53 @@ def main():
     with open("result.txt", "w") as result:
         result.close()
     count = 0
-    for py_file in f:
-        count = count + 1
-        # py_file = ["ae.seraji_21033343_721.py"]
-        if py_file[0] != "filename":
-            file_path = "./python_files/" + py_file[0]
-            with open(file_path, 'r', encoding="utf-8_sig") as sourse_file:
-                source = sourse_file.read()
-                tree = ast.parse(source, file_path)
-                # AST_Reader(tree)
-                # try:
-                global lineno_list
-                with open("result.txt", "a") as result:
-                    # FiveSixNodeVisitor().visit(tree)
-                    while len(lineno_list) != 0:
-                        result.write(file_path + "\n\n")
-                        result.write("pattern-5\n")
-                        # pop してwrite
-                        result.write(py_file[0])
-                        result.write("\n")
-                        print(lineno_list)
-                        a = lineno_list.pop(0)
-                        b = lineno_list.pop(0) + 1
-                        for i in range(a, b):
-                            result.write(linecache.getline(file_path, i))
-                        result.write("\n")
-                    # TwoNodeVisitor().visit(tree)
-                    while len(lineno_list) != 0:
-                        result.write(file_path + "\n\n")
-                        result.write("pattern-2\n")
-                        # pop してwrite
-                        result.write(py_file[0])
-                        result.write("\n")
-                        print(lineno_list)
-                        a = lineno_list.pop(0)
-                        b = lineno_list.pop(0) + 1
-                        for i in range(a, b):
-                            result.write(linecache.getline(file_path, i))
-                        result.write("\n")
-                    OneNodeSearcher().one_search(tree)
-                    while len(lineno_list) != 0:
-                        result.write("pattern-1\n")
-                        # pop してwrite
-                        result.write(py_file[0])
-                        result.write("\n")
-                        print(lineno_list)
-                        a = lineno_list.pop(0)
-                        b = lineno_list.pop(0) + 1
-                        for i in range(a, b):
-                            result.write(linecache.getline(file_path, i))
-                        result.write("\n")
+    # for py_file in f:
+    #     count = count + 1
+    py_file = ["pydat.py"]
+    if py_file[0] != "filename":
+        file_path = "./" + py_file[0]
+        with open(file_path, 'r', encoding="utf-8_sig") as sourse_file:
+            source = sourse_file.read()
+            tree = ast.parse(source, file_path)
+            # AST_Reader(tree)
+            # try:
+            global lineno_list
+            with open("result.txt", "a") as result:
+                FiveSixNodeVisitor().visit(tree)
+                while len(lineno_list) != 0:
+                    result.write(file_path + "\n\n")
+                    result.write("pattern-5\n")
+                    # pop してwrite
+                    result.write(py_file[0])
+                    result.write("\n")
+                    a = lineno_list.pop(0)
+                    b = lineno_list.pop(0) + 1
+                    for i in range(a, b):
+                        result.write(linecache.getline(file_path, i))
+                    result.write("\n")
+                TwoNodeVisitor().visit(tree)
+                while len(lineno_list) != 0:
+                    result.write(file_path + "\n\n")
+                    result.write("pattern-2\n")
+                    # pop してwrite
+                    result.write(py_file[0])
+                    result.write("\n")
+                    a = lineno_list.pop(0)
+                    b = lineno_list.pop(0) + 1
+                    for i in range(a, b):
+                        result.write(linecache.getline(file_path, i))
+                    result.write("\n")
+                OneNodeSearcher().one_search(tree)
+                while len(lineno_list) != 0:
+                    result.write("pattern-1\n")
+                    # pop してwrite
+                    result.write(py_file[0])
+                    result.write("\n")
+                    a = lineno_list.pop(0)
+                    b = lineno_list.pop(0) + 1
+                    for i in range(a, b):
+                        result.write(linecache.getline(file_path, i))
+                    result.write("\n")
                 # break
             # except:
             #     error_count = error_count + 1

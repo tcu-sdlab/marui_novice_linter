@@ -1,22 +1,87 @@
+./pydat.py
+
+pattern-5
+pydat.py
+    if ex(a,b):
+        return True
+    return False
+
+./pydat.py
+
+pattern-5
+pydat.py
+    if string.isdigit():
+        return True
+    return False
+
+./pydat.py
+
+pattern-5
+pydat.py
+    if pattern_five == 0:
+        return True
+    return False
+
+./pydat.py
+
+pattern-5
+pydat.py
+    if pattern_five_another == 0:
+        return True
+    else:
+        return False
+
+./pydat.py
+
+pattern-2
+pydat.py
+    if val < 10:
+        if val > 0:
+
+./pydat.py
+
+pattern-2
+pydat.py
+    if val < 10:
+        if val > 0:
+            if val == 1:
+
+./pydat.py
+
+pattern-2
+pydat.py
+    elif val < 15:
+        if val < 30:
+
+./pydat.py
+
+pattern-2
+pydat.py
+    if val < 10:
+        if val > 0:
+
+./pydat.py
+
+pattern-2
+pydat.py
+        if val < 30:
+            if val == 31:
+
+./pydat.py
+
+pattern-2
+pydat.py
+    if val < 10:
+        if val < 15:
+            if val < 30:
+                if val == 31:
+                    if isinstance(val, float):
+                        if isinstance(val, int):
+                            if isinstance(val, str):
+
 pattern-1
-adiIspas_20777163_716.py
-    if b - a <= c:
-
-        words += 1
-
-    if b - a > c and words > 0:
-
-pattern-1
-ae.seraji_21033343_721.py
-	if newState == state and newState == True:
-		size += 1
-	if newState != state and newState == True:
-
-pattern-1
-ae.seraji_21033343_721.py
-	if newState == state and newState == True:
-		size += 1
-	if newState != state and newState == True:
-		k += 1
-		if size != 0: out.append(size)
+pydat.py
+    if val < 13 and val >= 10 and val != 11:
+        print("1")
+    if val != 11 and val < 15 and val >= 10 and val >= 13:
 
